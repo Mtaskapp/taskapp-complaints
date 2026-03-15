@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Report a Problem — TaskApp</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,400;0,500;1,400&family=Epilogue:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+:root{
+  --bg:#f3f7f9;--surface:#ffffff;--card:#ffffff;
+  --border:#cfdee5;--border2:#bfd1da;
+  --accent:#0e766e;--accent2:#f97316;--amber:#d78800;--red:#d14343;
+  --success:#1a9a5f;
+  --text:#102a43;--sub:#486581;--dim:#6b879e;
+  --font:'Epilogue',sans-serif;--mono:'DM Mono',monospace;
+  --r:12px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:var(--font);color:var(--text);font-size:14px;background:var(--bg)}
+body{
+  background:
+    radial-gradient(900px 500px at 5% 0%, #d8f2ec 0%, transparent 56%),
+    radial-gradient(700px 440px at 92% 95%, #ffefe0 0%, transparent 60%),
+    linear-gradient(180deg,#f0f6f9,var(--bg));
+}
+input,textarea,select,button{font-family:inherit}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
+
+/* ── HEADER ── */
+.header{
+  position:sticky;top:0;z-index:100;
+  background:rgba(255,255,255,.92);backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--border);
+  padding:14px 28px;display:flex;align-items:center;justify-content:space-between;
+  box-shadow:0 4px 14px #102a430d;
+}
+.header-brand{display:flex;align-items:center;gap:12px}
+.header-dot{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:16px}
+.header-name{font-size:17px;font-weight:800}
+.header-sub{font-family:var(--mono);font-size:10px;color:var(--accent);letter-spacing:2px;text-transform:uppercase;margin-top:1px}
+.header-btn{padding:9px 18px;background:var(--accent);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s}
+.header-btn:hover{background:#0a5b55;transform:translateY(-1px);box-shadow:0 8px 22px #0e766e33}
+
+/* ── HERO / MAP ── */
+.hero{position:relative;height:400px}
+#map{height:100%;width:100%}
+.map-overlay{
+  position:absolute;top:18px;left:50%;transform:translateX(-50%);
+  background:rgba(255,255,255,.95);backdrop-filter:blur(8px);
+  border:1px solid var(--border2);border-radius:14px;
+  padding:12px 22px;box-shadow:0 12px 36px #102a4322;
+  text-align:center;pointer-events:none;
+}
+.map-overlay-title{font-size:14px;font-weight:700;color:var(--text)}
+.map-overlay-sub{font-size:11px;color:var(--sub);font-family:var(--mono);margin-top:2px}
+
+/* ── MAIN LAYOUT ── */
+.container{max-width:1160px;margin:0 auto;padding:32px 24px}
+.two-col{display:grid;grid-template-columns:1fr 360px;gap:24px;align-items:start}
+@media(max-width:860px){.two-col{grid-template-columns:1fr}}
+
+/* ── SECTION TITLES ── */
+.section-title{font-size:18px;font-weight:800;margin-bottom:16px;display:flex;align-items:center;gap:10px}
+.section-title::before{content:'';width:4px;height:20px;background:var(--accent);border-radius:2px}
+
+/* ── FEED CONTAINER ── */
+#feed{
+  max-height:250px;overflow-y:auto;padding-right:8px;
+  border:1px solid var(--border);border-radius:var(--r);background:var(--surface);padding:14px;
+}
+#feed .loading-center{padding:40px 20px;text-align:center}
+
+/* ── COMPLAINT CARDS ── */
+.complaint-card{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--r);
+  padding:18px;margin-bottom:14px;transition:all .2s;cursor:pointer;
+}
+.complaint-card:hover{border-color:#9cc4bc;transform:translateY(-2px);box-shadow:0 12px 30px #102a4312}
+.cc-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;gap:10px}
+.cc-cat{font-family:var(--mono);font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--accent);background:#e1f2ef;padding:3px 9px;border-radius:20px;flex-shrink:0}
+.cc-title{font-size:15px;font-weight:700;margin-bottom:5px}
+.cc-desc{font-size:12px;color:var(--sub);line-height:1.6;margin-bottom:12px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.cc-foot{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.cc-loc{font-size:11px;color:var(--dim);display:flex;align-items:center;gap:5px}
+.cc-date{font-family:var(--mono);font-size:10px;color:var(--dim)}
+.cc-img{width:100%;height:140px;object-fit:cover;border-radius:8px;margin-bottom:12px;border:1px solid var(--border)}
+.cc-update{background:#f0fdf8;border:1px solid #bfe5d0;border-radius:8px;padding:10px 12px;margin-top:10px}
+.cc-update-label{font-family:var(--mono);font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--success);margin-bottom:4px}
+.cc-update-text{font-size:12px;color:var(--text);line-height:1.5}
+
+/* ── BADGE ── */
+.badge{display:inline-flex;align-items:center;padding:2px 9px;border-radius:20px;font-family:var(--mono);font-size:10px;letter-spacing:.5px;font-weight:500}
+.badge-amber{background:#fff3e6;color:var(--amber);border:1px solid #f7d7b2}
+.badge-orange{background:#fff0e6;color:#d06000;border:1px solid #f5c080}
+.badge-cyan{background:#e1f2ef;color:var(--accent);border:1px solid #b9d8d1}
+.badge-red{background:#ffecef;color:var(--red);border:1px solid #f3c4cc}
+.badge-dim{background:#eef4f7;color:var(--sub);border:1px solid #d8e4ea}
+
+/* ── FILTER BAR ── */
+.filter-bar{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap}
+.filter-chip{padding:6px 14px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--border);color:var(--sub);background:#fff;transition:all .15s}
+.filter-chip.on{border-color:#b9d8d1;background:#e1f2ef;color:var(--accent)}
+.filter-count{font-size:11px;opacity:.8;font-weight:500}
+
+/* ── FORM PANEL ── */
+.form-panel{
+  background:var(--card);border:1px solid var(--border);border-radius:16px;
+  padding:24px;box-shadow:0 12px 30px #102a430d;position:sticky;top:78px;
+}
+.fp-title{font-size:16px;font-weight:800;margin-bottom:4px}
+.fp-sub{font-size:12px;color:var(--sub);margin-bottom:20px}
+.mf{margin-bottom:14px}
+.mf label{display:block;font-family:var(--mono);font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--sub);margin-bottom:6px}
+.mf input,.mf textarea,.mf select{width:100%;padding:10px 12px;background:#fff;border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:13px;outline:none;transition:border-color .2s}
+.mf input:focus,.mf textarea:focus,.mf select:focus{border-color:var(--accent);box-shadow:0 0 0 3px #0e766e1a}
+.mf textarea{resize:vertical;min-height:70px}
+/* ── GPS CAMERA ── */
+.gps-cam-wrap{border:2px dashed var(--border);border-radius:12px;overflow:hidden;background:#f0f5f8;position:relative;min-height:180px}
+.gps-cam-idle{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:28px 16px;cursor:pointer;transition:background .2s}
+.gps-cam-idle:hover{background:#e4f2ef}
+.gps-cam-idle .cam-icon{font-size:32px}
+.gps-cam-idle .cam-label{font-size:13px;font-weight:700;color:var(--accent)}
+.gps-cam-idle .cam-sub{font-size:11px;color:var(--sub);text-align:center}
+.gps-cam-viewfinder{display:none;position:relative;width:100%}
+.gps-cam-viewfinder video{width:100%;max-height:220px;object-fit:cover;display:block}
+.gps-cam-hud{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,.65));padding:8px 12px;font-family:var(--mono);font-size:10px;color:#fff;letter-spacing:.5px;line-height:1.6}
+.gps-cam-controls{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:#1a2b38}
+.btn-shutter{width:50px;height:50px;border-radius:50%;border:4px solid #fff;background:rgba(255,255,255,.15);cursor:pointer;transition:all .15s;position:relative}
+.btn-shutter:hover{background:rgba(255,255,255,.3);transform:scale(1.08)}
+.btn-shutter:active{transform:scale(.94)}
+.btn-shutter::after{content:'';width:36px;height:36px;border-radius:50%;background:#fff;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)}
+.cam-btn-sm{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:8px;padding:6px 12px;font-size:11px;cursor:pointer;font-family:var(--mono);transition:background .15s}
+.cam-btn-sm:hover{background:rgba(255,255,255,.2)}
+.gps-cam-preview{display:none;position:relative;width:100%}
+.gps-cam-preview canvas{width:100%;display:block;border-radius:0}
+.preview-actions{display:flex;gap:8px;padding:10px 12px;background:#1a2b38}
+.prev-btn{flex:1;padding:8px;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s}
+.prev-btn-retake{background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.25)}
+.prev-btn-retake:hover{background:rgba(255,255,255,.25)}
+.prev-btn-use{background:var(--accent);color:#fff}
+.prev-btn-use:hover{background:#0a5b55}
+.gps-cam-result{display:none;position:relative;width:100%;cursor:pointer}
+.gps-cam-result canvas{width:100%;display:block}
+.result-retake{position:absolute;top:8px;right:8px;background:rgba(0,0,0,.55);color:#fff;border:none;border-radius:8px;padding:5px 11px;font-size:11px;cursor:pointer;font-family:inherit;font-weight:600}
+.gps-badge{display:inline-flex;align-items:center;gap:5px;background:#e1f2ef;color:var(--accent);border:1px solid #b9d8d1;border-radius:20px;padding:3px 10px;font-size:11px;font-family:var(--mono);margin-top:6px}
+.gps-badge.error{background:#ffecef;color:var(--red);border-color:#f3c4cc}
+.img-preview{display:none}
+/* ── FALLBACK UPLOAD STATE ── */
+.gps-cam-fallback{display:none;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:22px 16px;background:#fffbf5}
+.fallback-title{font-size:13px;font-weight:700;color:var(--amber)}
+.fallback-sub{font-size:11px;color:var(--sub);text-align:center;line-height:1.6}
+.fallback-upload-area{width:100%;border:2px dashed #f7c96e;border-radius:10px;padding:16px;text-align:center;cursor:pointer;background:#fffdf7;transition:background .2s}
+.fallback-upload-area:hover{background:#fff8e8}
+.fallback-preview{width:100%;max-height:200px;object-fit:cover;border-radius:8px;display:none;border:1px solid var(--border);margin-top:6px}
+.fallback-gps-row{width:100%;display:flex;align-items:center;gap:8px;margin-top:4px}
+.fallback-gps-btn{flex:1;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:#fff;font-size:12px;font-weight:600;cursor:pointer;color:var(--accent);transition:all .15s}
+.fallback-gps-btn:hover{border-color:var(--accent);background:#f0faf8}
+.check-row{display:flex;align-items:center;gap:8px;margin-bottom:14px;font-size:13px}
+.check-row input[type=checkbox]{width:14px;height:14px;accent-color:var(--accent)}
+.btn-main{width:100%;padding:12px;border:none;border-radius:12px;background:var(--accent);color:#fff;font-weight:700;font-size:14px;cursor:pointer;transition:all .2s}
+.btn-main:hover{background:#0a5b55;transform:translateY(-1px);box-shadow:0 10px 26px #0e766e33}
+.btn-main:disabled{opacity:.45;cursor:not-allowed;transform:none;box-shadow:none}
+.upload-progress{display:none;background:#e1f2ef;border-radius:8px;padding:8px 12px;font-size:12px;color:var(--accent);margin-bottom:10px;text-align:center}
+
+/* ── EMPTY ── */
+.empty{text-align:center;padding:50px 20px;color:var(--sub)}
+.empty-icon{font-size:36px;display:block;margin-bottom:10px}
+
+/* ── TOAST ── */
+#toast{position:fixed;bottom:24px;right:24px;z-index:9999;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px 18px;font-size:13px;display:none;box-shadow:0 14px 34px #102a431f;animation:tIn .2s ease;max-width:320px}
+@keyframes tIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+#toast.success{border-color:#bfe5d0;color:var(--success)}
+#toast.error{border-color:#f3c4cc;color:var(--red)}
+
+/* ── DETAIL MODAL ── */
+.overlay{display:none;position:fixed;inset:0;background:#102a4321;backdrop-filter:blur(6px);z-index:200;align-items:center;justify-content:center}
+.overlay.open{display:flex}
+.modal{background:linear-gradient(180deg,#ffffff,#f9fcfd);border:1px solid var(--border2);border-radius:18px;width:560px;max-width:95vw;max-height:88vh;overflow-y:auto;box-shadow:0 24px 58px #102a431f;animation:mIn .2s ease}
+@keyframes mIn{from{opacity:0;transform:scale(.96) translateY(12px)}to{opacity:1;transform:none}}
+.mh{padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.mh-title{font-size:16px;font-weight:700}
+.mclose{background:none;border:none;color:var(--sub);font-size:18px;cursor:pointer;line-height:1;padding:2px}
+.mclose:hover{color:var(--text)}
+.mb{padding:20px 24px}
+#detail-map{height:200px;border-radius:10px;overflow:hidden;margin-bottom:14px;border:1px solid var(--border)}
+.rblock{background:#f8fcfd;border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px}
+.rblock-label{font-family:var(--mono);font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--sub);margin-bottom:6px}
+.rblock-val{font-size:13px;line-height:1.7;color:var(--text)}
+.upd-item{background:#f0fdf8;border:1px solid #bfe5d0;border-radius:8px;padding:10px 12px;margin-bottom:8px}
+.upd-item-meta{font-family:var(--mono);font-size:10px;color:var(--success);margin-bottom:4px}
+.upd-item-text{font-size:13px}
+
+/* ── LOADING SPIN ── */
+.spin{display:inline-block;width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-center{text-align:center;padding:40px;color:var(--sub)}
+
+@media(max-width:640px){
+  .header{padding:12px 16px}
+  .container{padding:20px 14px}
+  .form-panel{position:static}
+  .hero{height:280px}
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="header-brand">
+    <div class="header-dot">📍</div>
+    <div>
+      <div class="header-name">Report a Problem</div>
+      <div class="header-sub">TaskApp · Public Complaints</div>
+    </div>
+  </div>
+  <button class="header-btn" onclick="document.getElementById('form-panel').scrollIntoView({behavior:'smooth'})">
+    ＋ Report Issue
+  </button>
+</header>
+
+<!-- HERO MAP -->
+<div class="hero">
+  <div id="map"></div>
+  <div class="map-overlay">
+    <div class="map-overlay-title">📌 Live Complaint Map</div>
+    <div class="map-overlay-sub">Click a pin to view details</div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="container">
+  <div class="two-col">
+
+    <!-- LEFT: Feed -->
+    <div>
+      <div class="section-title">Public Complaints Feed</div>
+      <div class="filter-bar" id="filter-bar">
+        <button class="filter-chip on" data-status="" onclick="setFilter(this,'')">All</button>
+        <button class="filter-chip" data-status="PENDING" onclick="setFilter(this,'PENDING')">Pending</button>
+        <button class="filter-chip" data-status="IN_PROGRESS" onclick="setFilter(this,'IN_PROGRESS')">In Progress</button>
+        <button class="filter-chip" data-status="RESOLVED" onclick="setFilter(this,'RESOLVED')">Resolved</button>
+      </div>
+      <div id="feed"><div class="loading-center"><span class="spin"></span></div></div>
+    </div>
+
+    <!-- RIGHT: Form -->
+    <div id="form-panel" class="form-panel">
+      <div class="fp-title">Report a Problem</div>
+      <div class="fp-sub">Fill in the details below. Your report will be reviewed by the team.</div>
+
+      <div class="mf">
+        <label>Your Name (optional)</label>
+        <input id="f-name" placeholder="e.g. Arjun Sharma"/>
+      </div>
+      <div class="mf">
+        <label>Mobile Number *</label>
+        <input id="f-phone" type="tel" placeholder="+91 98765 43210"/>
+      </div>
+      <div class="mf">
+        <label>Category *</label>
+        <select id="f-category">
+          <option value="">Select category…</option>
+          <option>Pothole / Road Damage</option>
+          <option>Broken Street Light</option>
+          <option>Sewage / Drainage</option>
+          <option>Garbage / Waste</option>
+          <option>Water Supply Issue</option>
+          <option>Encroachment</option>
+          <option>Noise Complaint</option>
+          <option>Other</option>
+        </select>
+      </div>
+      <div class="mf">
+        <label>Problem Title *</label>
+        <input id="f-title" placeholder="e.g. Large pothole near bus stop"/>
+      </div>
+      <div class="mf">
+        <label>Description</label>
+        <textarea id="f-description" placeholder="Describe the problem in detail — size, severity, how long it has been there…"></textarea>
+      </div>
+
+      <div class="mf">
+        <label>📸 GPS Photo *</label>
+        <div style="font-size:11px;color:var(--sub);margin-bottom:8px">Take a photo — GPS location is captured automatically and stamped on the image</div>
+
+        <!-- GPS Camera widget -->
+        <div class="gps-cam-wrap" id="gpsCamWrap">
+
+          <!-- IDLE state -->
+          <div class="gps-cam-idle" id="gpsCamIdle" onclick="startCamera()">
+            <div class="cam-icon">📷</div>
+            <div class="cam-label">Tap to Open Camera</div>
+            <div class="cam-sub">GPS coordinates will be stamped on your photo</div>
+          </div>
+
+          <!-- VIEWFINDER state -->
+          <div class="gps-cam-viewfinder" id="gpsCamViewfinder">
+            <video id="gpsCamVideo" autoplay playsinline muted></video>
+            <div class="gps-cam-hud" id="gpsCamHud">📡 Acquiring GPS…</div>
+            <div class="gps-cam-controls">
+              <button class="cam-btn-sm" onclick="flipCamera()">🔄 Flip</button>
+              <button class="btn-shutter" id="shutterBtn" onclick="capturePhoto()" title="Capture"></button>
+              <button class="cam-btn-sm" onclick="stopCamera()">✕ Cancel</button>
+            </div>
+          </div>
+
+          <!-- PREVIEW state (confirm or retake) -->
+          <div class="gps-cam-preview" id="gpsCamPreview">
+            <canvas id="gpsCamCanvas"></canvas>
+            <div class="preview-actions">
+              <button class="prev-btn prev-btn-retake" onclick="retakePhoto()">↩ Retake</button>
+              <button class="prev-btn prev-btn-use" onclick="usePhoto()">✓ Use Photo</button>
+            </div>
+          </div>
+
+          <!-- RESULT state (photo accepted) -->
+          <div class="gps-cam-result" id="gpsCamResult">
+            <canvas id="gpsCamResultCanvas"></canvas>
+            <button class="result-retake" onclick="retakePhoto()">🔄 Retake</button>
+          </div>
+
+          <!-- FALLBACK state (camera denied — upload + GPS) -->
+          <div class="gps-cam-fallback" id="gpsCamFallback">
+            <div style="font-size:26px">⚠️</div>
+            <div class="fallback-title">Camera access was denied</div>
+            <div class="fallback-sub">Upload a photo from your gallery instead.<br>We'll still tag your GPS location automatically.</div>
+            <div class="fallback-upload-area" onclick="document.getElementById('f-image-fallback').click()">
+              <div style="font-size:22px;margin-bottom:4px">🖼️</div>
+              <div style="font-size:12px;font-weight:700;color:var(--sub)">Tap to choose a photo</div>
+              <div style="font-size:11px;color:var(--dim);margin-top:2px">JPG or PNG, max 5 MB</div>
+              <input type="file" id="f-image-fallback" accept="image/jpeg,image/png" style="display:none" onchange="handleFallbackUpload(this)"/>
+            </div>
+            <img id="fallback-preview" class="fallback-preview"/>
+            <div class="fallback-gps-row">
+              <button class="fallback-gps-btn" onclick="grabGpsForFallback()">📍 Get My GPS Location</button>
+              <div id="fallbackGpsStatus" style="font-size:11px;color:var(--sub);font-family:var(--mono)">Not grabbed</div>
+            </div>
+            <div style="display:flex;gap:8px;width:100%;margin-top:4px">
+              <button class="prev-btn prev-btn-retake" style="flex:1;padding:8px" onclick="retakePhoto()">↩ Try Camera Again</button>
+              <button class="prev-btn prev-btn-use" style="flex:1;padding:8px" id="fallbackUseBtn" onclick="useFallbackPhoto()" disabled>✓ Use This Photo</button>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- GPS status badge -->
+        <div id="gpsStatusBadge" style="display:none" class="gps-badge">📍 —</div>
+
+        <!-- Hidden inputs to carry data -->
+        <input type="hidden" id="f-image-data"/>
+        <input type="file" id="f-image" accept="image/*" style="display:none"/>
+        <img id="img-preview" class="img-preview"/>
+
+        <!-- Location name -->
+        <input id="f-location-name" placeholder="Location name / landmark (optional)" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:9px;font-size:13px;outline:none;font-family:inherit;color:var(--text);margin-top:10px"/>
+      </div>
+
+      <div class="check-row">
+        <input type="checkbox" id="f-public" checked/>
+        <label for="f-public">Make this complaint visible to the public</label>
+      </div>
+
+      <div class="upload-progress" id="upload-progress">⏫ Uploading photo…</div>
+      <button class="btn-main" id="submit-btn" onclick="submitComplaint()">Submit Complaint →</button>
+      <div style="font-size:11px;color:var(--sub);text-align:center;margin-top:10px">
+        Your mobile number is kept private and only used for updates.
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Detail Modal -->
+<div class="overlay" id="m-detail">
+  <div class="modal">
+    <div class="mh">
+      <div>
+        <div class="mh-title" id="dt-title">Complaint</div>
+        <div style="font-size:11px;color:var(--sub);margin-top:2px" id="dt-sub"></div>
+      </div>
+      <button class="mclose" onclick="closeDetail()">✕</button>
+    </div>
+    <div class="mb">
+      <div id="detail-map"></div>
+      <img id="dt-image" src="" style="width:100%;max-height:200px;object-fit:cover;border-radius:8px;margin-bottom:12px;border:1px solid var(--border);display:none"/>
+      <div class="rblock"><div class="rblock-label">Category</div><div class="rblock-val" id="dt-category">—</div></div>
+      <div class="rblock"><div class="rblock-label">Description</div><div class="rblock-val" id="dt-description">—</div></div>
+      <div class="rblock"><div class="rblock-label">Location</div><div class="rblock-val" id="dt-location">—</div></div>
+      <div style="margin-top:14px">
+        <div style="font-family:var(--mono);font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--sub);margin-bottom:8px">Official Updates</div>
+        <div id="dt-updates"><div style="color:var(--sub);font-size:12px">No updates yet</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<!-- Firebase compat + Leaflet -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+
+// ── CONFIG ───────────────────────────────────────────────────────────────────
+firebase.initializeApp({
+  apiKey: "AIzaSyCm0mMgaed3w1gOFF3LzqbDjy3ELspFVPY",
+  authDomain: "taskapp-cd2c0.firebaseapp.com",
+  projectId: "taskapp-cd2c0",
+  storageBucket: "taskapp-cd2c0.firebasestorage.app",
+  messagingSenderId: "9386144641",
+  appId: "1:9386144641:web:96ad409f1e74e8eef4ee80"
+});
+const PREFIX = "dev_";
+const db      = firebase.firestore();
+const storage = firebase.storage();
+const col     = { complaints: () => db.collection(`${PREFIX}complaints`) };
+
+// ── STATE ─────────────────────────────────────────────────────────────────────
+let allComplaints = [];
+let pickedLat = null, pickedLng = null;
+let pickMap = null, pickMarker = null;
+let mainMap = null;
+let activeFilter = '';
+let detailMap = null;
+
+// ── INIT MAPS ─────────────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  // Main display map
+  mainMap = L.map('map', { zoomControl: true }).setView([17.385, 78.4867], 12);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19, attribution: '© OpenStreetMap contributors'
+  }).addTo(mainMap);
+
+  // Load complaints
+  listenComplaints();
+});
+
+// ── GPS CAMERA ENGINE ─────────────────────────────────────────────────────────
+let camStream = null;
+let camFacingMode = 'environment'; // rear camera by default
+let gpsCoords = null;
+let capturedDataUrl = null;
+
+function startCamera() {
+  // Check if we're in a secure context — camera requires HTTPS or localhost
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    showState('fallback');
+    grabGpsForFallback();
+    return;
+  }
+
+  // Start GPS watch simultaneously
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        gpsCoords = { lat: pos.coords.latitude, lng: pos.coords.longitude, acc: pos.coords.accuracy };
+        pickedLat = gpsCoords.lat; pickedLng = gpsCoords.lng;
+        updateHud();
+        updateGpsBadge();
+      },
+      () => { gpsCoords = null; updateHud(); },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  }
+
+  const constraints = { video: { facingMode: camFacingMode, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false };
+  navigator.mediaDevices.getUserMedia(constraints)
+    .then(stream => {
+      camStream = stream;
+      document.getElementById('gpsCamVideo').srcObject = stream;
+      showState('viewfinder');
+    })
+    .catch(err => {
+      // Graceful fallback: let user upload a photo + grab GPS separately
+      console.warn('Camera denied:', err.message);
+      showState('fallback');
+      grabGpsForFallback();
+    });
+}
+
+// ── FALLBACK: upload photo + GPS separately ───────────────────────────────────
+let fallbackFile = null;
+
+function grabGpsForFallback() {
+  const statusEl = document.getElementById('fallbackGpsStatus');
+  if (!navigator.geolocation) { statusEl.textContent = 'GPS not supported'; return; }
+  statusEl.textContent = '⏳ Getting location…';
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      gpsCoords = { lat: pos.coords.latitude, lng: pos.coords.longitude, acc: pos.coords.accuracy };
+      pickedLat = gpsCoords.lat; pickedLng = gpsCoords.lng;
+      statusEl.style.color = 'var(--accent)';
+      statusEl.textContent = `${gpsCoords.lat.toFixed(5)}, ${gpsCoords.lng.toFixed(5)}`;
+      checkFallbackReady();
+    },
+    () => {
+      statusEl.style.color = 'var(--red)';
+      statusEl.textContent = 'Could not get GPS';
+    },
+    { enableHighAccuracy: true, timeout: 12000 }
+  );
+}
+
+function handleFallbackUpload(input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (file.size > 5 * 1024 * 1024) { toast('Image must be under 5 MB', 'error'); input.value = ''; return; }
+  fallbackFile = file;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const prev = document.getElementById('fallback-preview');
+    prev.src = e.target.result;
+    prev.style.display = 'block';
+    checkFallbackReady();
+  };
+  reader.readAsDataURL(file);
+}
+
+function checkFallbackReady() {
+  const btn = document.getElementById('fallbackUseBtn');
+  if (btn) btn.disabled = !(fallbackFile && gpsCoords);
+}
+
+function useFallbackPhoto() {
+  if (!fallbackFile || !gpsCoords) return;
+  // Draw image onto canvas and stamp GPS overlay
+  const img = new Image();
+  const reader = new FileReader();
+  reader.onload = e => {
+    img.onload = () => {
+      const canvas = document.getElementById('gpsCamCanvas');
+      canvas.width = img.naturalWidth; canvas.height = img.naturalHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+      stampGpsOverlay(ctx, canvas.width, canvas.height);
+      capturedDataUrl = canvas.toDataURL('image/jpeg', 0.92);
+      // Copy to result canvas
+      const dst = document.getElementById('gpsCamResultCanvas');
+      dst.width = canvas.width; dst.height = canvas.height;
+      dst.getContext('2d').drawImage(canvas, 0, 0);
+      document.getElementById('f-image-data').value = capturedDataUrl;
+      pickedLat = gpsCoords.lat; pickedLng = gpsCoords.lng;
+      updateGpsBadge();
+      showState('result');
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(fallbackFile);
+}
+
+function flipCamera() {
+  camFacingMode = camFacingMode === 'environment' ? 'user' : 'environment';
+  stopCamera(true);
+  startCamera();
+}
+
+function stopCamera(keepState) {
+  if (camStream) { camStream.getTracks().forEach(t => t.stop()); camStream = null; }
+  if (!keepState) showState('idle');
+}
+
+function updateHud() {
+  const hud = document.getElementById('gpsCamHud');
+  if (!hud) return;
+  if (gpsCoords) {
+    const now = new Date();
+    hud.textContent = `📍 ${gpsCoords.lat.toFixed(6)}, ${gpsCoords.lng.toFixed(6)}  ±${Math.round(gpsCoords.acc)}m  ${now.toLocaleString('en-IN')}`;
+  } else {
+    hud.textContent = '📡 Acquiring GPS…';
+  }
+}
+
+function updateGpsBadge() {
+  const badge = document.getElementById('gpsStatusBadge');
+  if (!badge) return;
+  if (gpsCoords) {
+    badge.className = 'gps-badge';
+    badge.innerHTML = `📍 ${gpsCoords.lat.toFixed(5)}, ${gpsCoords.lng.toFixed(5)}`;
+    badge.style.display = 'inline-flex';
+  } else {
+    badge.className = 'gps-badge error';
+    badge.innerHTML = '⚠️ GPS unavailable';
+    badge.style.display = 'inline-flex';
+  }
+}
+
+function capturePhoto() {
+  const video = document.getElementById('gpsCamVideo');
+  const canvas = document.getElementById('gpsCamCanvas');
+  canvas.width  = video.videoWidth  || 1280;
+  canvas.height = video.videoHeight || 720;
+  const ctx = canvas.getContext('2d');
+
+  // Mirror if front camera
+  if (camFacingMode === 'user') {
+    ctx.save(); ctx.scale(-1, 1); ctx.drawImage(video, -canvas.width, 0, canvas.width, canvas.height); ctx.restore();
+  } else {
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  }
+
+  // Stamp GPS overlay
+  stampGpsOverlay(ctx, canvas.width, canvas.height);
+
+  capturedDataUrl = canvas.toDataURL('image/jpeg', 0.92);
+  stopCamera(true);
+  showState('preview');
+}
+
+function stampGpsOverlay(ctx, w, h) {
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' });
+  const timeStr = now.toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+  const latStr  = gpsCoords ? `${gpsCoords.lat.toFixed(6)}°N` : 'GPS unavailable';
+  const lngStr  = gpsCoords ? `${gpsCoords.lng.toFixed(6)}°E` : '';
+  const accStr  = gpsCoords ? `±${Math.round(gpsCoords.acc)}m` : '';
+
+  const lines = [
+    `📅 ${dateStr}  ${timeStr}`,
+    `📍 ${latStr}  ${lngStr}`,
+    accStr ? `🎯 Accuracy: ${accStr}` : null,
+  ].filter(Boolean);
+
+  const pad = 14, lineH = 22, fontSize = 15;
+  const boxH = lines.length * lineH + pad * 2;
+  const boxY = h - boxH - 10;
+
+  // Semi-transparent background
+  ctx.fillStyle = 'rgba(10, 20, 30, 0.68)';
+  roundRect(ctx, 10, boxY, w - 20, boxH, 10);
+  ctx.fill();
+
+  // Text
+  ctx.font = `bold ${fontSize}px 'Courier New', monospace`;
+  ctx.fillStyle = '#ffffff';
+  ctx.shadowColor = 'rgba(0,0,0,0.7)';
+  ctx.shadowBlur = 4;
+  lines.forEach((line, i) => {
+    ctx.fillText(line, 10 + pad, boxY + pad + fontSize + i * lineH);
+  });
+  ctx.shadowBlur = 0;
+
+  // Small brand watermark
+  ctx.font = '11px sans-serif';
+  ctx.fillStyle = 'rgba(255,255,255,0.5)';
+  ctx.textAlign = 'right';
+  ctx.fillText('TaskApp · GPS Camera', w - 14, h - 12);
+  ctx.textAlign = 'left';
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+function retakePhoto() {
+  capturedDataUrl = null; fallbackFile = null;
+  document.getElementById('f-image-data').value = '';
+  document.getElementById('f-image-fallback').value = '';
+  document.getElementById('fallback-preview').style.display = 'none';
+  document.getElementById('fallbackGpsStatus').textContent = 'Not grabbed';
+  document.getElementById('fallbackGpsStatus').style.color = '';
+  const btn = document.getElementById('fallbackUseBtn');
+  if (btn) btn.disabled = true;
+  showState('idle');
+  document.getElementById('gpsStatusBadge').style.display = 'none';
+}
+
+function usePhoto() {
+  if (!capturedDataUrl) return;
+  // Copy to result canvas
+  const src = document.getElementById('gpsCamCanvas');
+  const dst = document.getElementById('gpsCamResultCanvas');
+  dst.width = src.width; dst.height = src.height;
+  dst.getContext('2d').drawImage(src, 0, 0);
+  // Store data
+  document.getElementById('f-image-data').value = capturedDataUrl;
+  if (gpsCoords) {
+    pickedLat = gpsCoords.lat; pickedLng = gpsCoords.lng;
+  }
+  updateGpsBadge();
+  showState('result');
+}
+
+function showState(state) {
+  document.getElementById('gpsCamIdle').style.display        = state==='idle'       ? 'flex'  : 'none';
+  document.getElementById('gpsCamViewfinder').style.display   = state==='viewfinder' ? 'block' : 'none';
+  document.getElementById('gpsCamPreview').style.display      = state==='preview'    ? 'block' : 'none';
+  document.getElementById('gpsCamResult').style.display       = state==='result'     ? 'block' : 'none';
+  document.getElementById('gpsCamFallback').style.display     = state==='fallback'   ? 'flex'  : 'none';
+}
+
+function setPickedLocation(lat, lng) {
+  pickedLat = lat; pickedLng = lng;
+}
+
+function useMyLocation() {
+  if (!navigator.geolocation) { toast('Geolocation not supported','error'); return; }
+  navigator.geolocation.getCurrentPosition(
+    pos => setPickedLocation(pos.coords.latitude, pos.coords.longitude),
+    () => toast('Could not get location','error')
+  );
+}
+
+// ── FIRESTORE LISTEN ──────────────────────────────────────────────────────────
+function listenComplaints() {
+  col.complaints()
+    .orderBy('createdAt','desc')
+    .onSnapshot(snap => {
+      allComplaints = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      renderFeed();
+      updateFilterCounts();
+      renderMapPins();
+    }, err => {
+      console.warn('Firestore error:', err);
+      // Fallback: fetch all and sort client-side
+      col.complaints().get().then(snap => {
+        allComplaints = snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b) => (b.createdAt?.toDate?.()??0) - (a.createdAt?.toDate?.()??0));
+        renderFeed(); updateFilterCounts(); renderMapPins();
+      }).catch(e => {
+        console.error('Failed to load complaints:', e);
+        renderFeed(); updateFilterCounts();
+      });
+    });
+}
+
+const STATUS_BADGE = {
+  PENDING: '<span class="badge badge-amber">Pending</span>',
+  IN_PROGRESS: '<span class="badge badge-orange">In Progress</span>',
+  RESOLVED: '<span class="badge badge-cyan">Resolved</span>',
+  REJECTED: '<span class="badge badge-red">Rejected</span>'
+};
+
+function renderFeed() {
+  const list = activeFilter ? allComplaints.filter(c => c.status === activeFilter) : allComplaints;
+  const feed = document.getElementById('feed');
+  if (!list.length) {
+    feed.innerHTML = `<div class="empty" style="padding:40px 20px"><span class="empty-icon">◈</span><p>No complaints found</p></div>`;
+    return;
+  }
+  feed.innerHTML = list.map(c => {
+    const lastUpd = (c.adminUpdates||[]).slice(-1)[0];
+    return `
+    <div class="complaint-card" onclick="openDetail('${c.id}')">
+      <div class="cc-top">
+        <div style="flex:1"><div class="cc-title">${esc(c.title||'Untitled')}</div></div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0">
+          ${STATUS_BADGE[c.status]||'<span class="badge badge-dim">Unknown</span>'}
+          <span class="cc-cat">${esc(c.category||'—')}</span>
+        </div>
+      </div>
+      ${c.imageUrl ? `<img class="cc-img" src="${c.imageUrl}" loading="lazy"/>` : ''}
+      <div class="cc-desc">${esc(c.description||'No description provided.')}</div>
+      <div class="cc-foot">
+        <span class="cc-loc">📍 ${esc(c.locationName || (c.lat ? `${c.lat.toFixed(4)}, ${c.lng.toFixed(4)}` : 'Location not specified'))}</span>
+        <span class="cc-date">${fmtDate(c.createdAt)}</span>
+      </div>
+      ${lastUpd ? `<div class="cc-update"><div class="cc-update-label">✅ Official Update</div><div class="cc-update-text">${esc(lastUpd.text)}</div></div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function renderMapPins() {
+  // Clear existing complaint layers (keep base tile)
+  mainMap.eachLayer(l => { if (l instanceof L.Marker) mainMap.removeLayer(l); });
+  allComplaints.forEach(c => {
+    if (!c.lat || !c.lng) return;
+    const color = c.status==='RESOLVED'?'#1a9a5f':c.status==='IN_PROGRESS'?'#d06000':'#d14343';
+    const icon = L.divIcon({
+      className:'',
+      html:`<div style="width:28px;height:28px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:${color};border:3px solid #fff;box-shadow:0 2px 8px #0003"></div>`,
+      iconSize:[28,28], iconAnchor:[14,28], popupAnchor:[0,-28]
+    });
+    L.marker([c.lat, c.lng], { icon })
+      .addTo(mainMap)
+      .bindPopup(`<b style="font-size:13px">${esc(c.title||'Complaint')}</b><br><span style="font-size:11px;color:#666">${esc(c.category||'')}</span><br><span style="font-size:11px">${c.status?.replace('_',' ') || '—'}</span>`)
+      .on('click', () => openDetail(c.id));
+  });
+}
+
+// ── FILTER ────────────────────────────────────────────────────────────────────
+window.setFilter = (el, status) => {
+  activeFilter = status;
+  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('on'));
+  el.classList.add('on');
+  renderFeed();
+  updateFilterCounts();
+};
+
+function updateFilterCounts() {
+  const total = allComplaints.length;
+  const pending = allComplaints.filter(c => c.status === 'PENDING').length;
+  const inProgress = allComplaints.filter(c => c.status === 'IN_PROGRESS').length;
+  const resolved = allComplaints.filter(c => c.status === 'RESOLVED').length;
+  
+  document.querySelectorAll('.filter-chip').forEach(btn => {
+    const status = btn.dataset.status;
+    let count = total;
+    if (status === 'PENDING') count = pending;
+    else if (status === 'IN_PROGRESS') count = inProgress;
+    else if (status === 'RESOLVED') count = resolved;
+    
+    const countSpan = btn.querySelector('.filter-count') || document.createElement('span');
+    countSpan.className = 'filter-count';
+    countSpan.textContent = ` (${count})`;
+    if (!btn.querySelector('.filter-count')) btn.appendChild(countSpan);
+  });
+}
+
+// ── DETAIL MODAL ──────────────────────────────────────────────────────────────
+window.openDetail = (id) => {
+  const c = allComplaints.find(x => x.id === id);
+  if (!c) return;
+  document.getElementById('dt-title').textContent = c.title || 'Complaint';
+  document.getElementById('dt-sub').textContent = `${c.category||'—'} · ${fmtDate(c.createdAt)} · ${(STATUS_BADGE[c.status]||'').replace(/<[^>]+>/g,'')}`;
+  document.getElementById('dt-category').textContent = c.category || '—';
+  document.getElementById('dt-description').textContent = c.description || '—';
+  document.getElementById('dt-location').textContent = c.locationName || (c.lat ? `${c.lat.toFixed(5)}, ${c.lng.toFixed(5)}` : '—');
+  const img = document.getElementById('dt-image');
+  if (c.imageUrl) { img.src = c.imageUrl; img.style.display='block'; } else { img.style.display='none'; }
+  const upds = c.adminUpdates||[];
+  document.getElementById('dt-updates').innerHTML = upds.length
+    ? upds.map(u=>`<div class="upd-item"><div class="upd-item-meta">✅ Official update · ${esc(u.date||'')}</div><div class="upd-item-text">${esc(u.text)}</div></div>`).join('')
+    : '<div style="color:var(--sub);font-size:12px">No updates yet</div>';
+  document.getElementById('m-detail').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  setTimeout(() => {
+    if (detailMap) { detailMap.remove(); detailMap = null; }
+    const mapEl = document.getElementById('detail-map');
+    if (c.lat && c.lng) {
+      detailMap = L.map('detail-map').setView([c.lat, c.lng], 15);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(detailMap);
+      L.marker([c.lat, c.lng]).addTo(detailMap).bindPopup(`<b>${esc(c.title||'')}</b>`).openPopup();
+    } else {
+      mapEl.innerHTML = '<div style="height:100%;display:flex;align-items:center;justify-content:center;color:var(--sub);background:#f3f7f9;border-radius:10px;font-size:13px">No location data</div>';
+    }
+  }, 120);
+};
+
+window.closeDetail = () => {
+  document.getElementById('m-detail').classList.remove('open');
+  document.body.style.overflow = '';
+};
+document.getElementById('m-detail').addEventListener('click', e => {
+  if (e.target === document.getElementById('m-detail')) window.closeDetail();
+});
+
+// ── IMAGE PREVIEW (legacy stub kept for safety) ───────────────────────────────
+window.previewImage = () => {};
+window.useMyLocation = useMyLocation;
+window.startCamera = startCamera;
+window.flipCamera = flipCamera;
+window.stopCamera = stopCamera;
+window.capturePhoto = capturePhoto;
+window.retakePhoto = retakePhoto;
+window.usePhoto = usePhoto;
+
+// ── SUBMIT ────────────────────────────────────────────────────────────────────
+window.submitComplaint = async () => {
+  const phone    = document.getElementById('f-phone').value.trim();
+  const category = document.getElementById('f-category').value;
+  const title    = document.getElementById('f-title').value.trim();
+  const imageData = document.getElementById('f-image-data').value;
+
+  if (!phone)    { toast('Mobile number is required','error'); return; }
+  if (!category) { toast('Please select a category','error'); return; }
+  if (!title)    { toast('Please enter a problem title','error'); return; }
+  if (!imageData){ toast('Please capture a GPS photo first','error'); return; }
+  if (!pickedLat || !pickedLng) { toast('GPS location not found — retake the photo outdoors','error'); return; }
+
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true; btn.textContent = 'Submitting…';
+
+  try {
+    let imageUrl = null;
+    // Convert base64 to blob and upload
+    document.getElementById('upload-progress').style.display='block';
+    const blob = await (await fetch(imageData)).blob();
+    const ref = storage.ref(`${PREFIX}complaints/${Date.now()}_gps.jpg`);
+    await ref.put(blob, { contentType: 'image/jpeg' });
+    imageUrl = await ref.getDownloadURL();
+    document.getElementById('upload-progress').style.display='none';
+
+    const docRef = col.complaints().doc();
+    await docRef.set({
+      id: docRef.id,
+      reporterName: document.getElementById('f-name').value.trim() || 'Anonymous',
+      reporterPhone: phone,
+      category,
+      title,
+      description: document.getElementById('f-description').value.trim(),
+      imageUrl,
+      lat: pickedLat,
+      lng: pickedLng,
+      locationName: document.getElementById('f-location-name').value.trim() || `${pickedLat.toFixed(5)}, ${pickedLng.toFixed(5)}`,
+      isPublic: document.getElementById('f-public').checked,
+      status: 'PENDING',
+      adminUpdates: [],
+      verificationTaskId: null,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    toast('Complaint submitted! Thank you.', 'success');
+    // Reset form
+    ['f-name','f-phone','f-title','f-description','f-location-name'].forEach(id => document.getElementById(id).value='');
+    document.getElementById('f-category').value = '';
+    document.getElementById('f-image-data').value = '';
+    capturedDataUrl = null; gpsCoords = null;
+    pickedLat = null; pickedLng = null;
+    document.getElementById('gpsStatusBadge').style.display = 'none';
+    document.getElementById('f-public').checked = true;
+    showState('idle');
+
+  } catch(err) {
+    console.error(err);
+    toast('Error submitting complaint: ' + err.message, 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Submit Complaint →';
+    document.getElementById('upload-progress').style.display='none';
+  }
+};
+
+// ── HELPERS ───────────────────────────────────────────────────────────────────
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function fmtDate(ts){
+  if(!ts) return '—';
+  const d = ts.toDate ? ts.toDate() : new Date((ts.seconds||0)*1000);
+  return d.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+}
+function toast(msg,type='success'){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.className=type; t.style.display='block';
+  setTimeout(()=>t.style.display='none',3200);
+}
+window.useMyLocation      = useMyLocation;
+window.startCamera        = startCamera;
+window.flipCamera         = flipCamera;
+window.stopCamera         = stopCamera;
+window.capturePhoto       = capturePhoto;
+window.retakePhoto        = retakePhoto;
+window.usePhoto           = usePhoto;
+window.grabGpsForFallback = grabGpsForFallback;
+window.handleFallbackUpload = handleFallbackUpload;
+window.useFallbackPhoto   = useFallbackPhoto;
+</script>
+</body>
+</html>
